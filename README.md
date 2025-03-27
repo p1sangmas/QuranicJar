@@ -38,13 +38,16 @@ QuranicJar is a SwiftUI-based iOS application that predicts a user's emotion bas
    - Uses fine-tuned BERT and RoBERTa models to classify emotions.
    - Maps predicted emotions to Quranic verses using a dataset.
 
-5. **`trainbert.py`,`trainroberta.py`,`traindistilbert.py`**
+5. **`train_bert.py`,`train_roberta.py`,`train_distilbert.py`**
    - Fine tune the pretrain models to the specific dataset
 
-6. **`quran_emotions.csv`**:
+6. **`test_singlemodel.py`,`test_ensemblemodel.py`**
+   - Testing the fine-tuned model
+
+7. **`quran_emotions.csv`**:
    - A dataset containing Quranic verses mapped to specific emotions.
 
-7. **`model/`**:
+8. **`model/`**:
    - Contains the fine-tuned BERT and RoBERTa models and their tokenizers.
 
 ## Backend API
