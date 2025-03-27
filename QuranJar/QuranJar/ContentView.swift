@@ -13,52 +13,157 @@ struct ContentView: View {
     @State private var predictedEmotion: String = ""
     @State private var quranicVerse: String = ""
     @State private var isLoading: Bool = false
+    @State private var bookmarks: [String] = [] // List of bookmarked verses
 
     var body: some View {
-        VStack(spacing: 10) {
-            Text("Assalamualaikum, \(userName)!")
-                .font(.largeTitle)
-                .multilineTextAlignment(.center)
-                .padding()
+        TabView {
+            // Main Content
+            NavigationView {
+                VStack(spacing: 20) {
+                    Spacer()
+                    // Greeting Section
+                    VStack(spacing: 10) {
+                        TypewriterText(text: "Assalamualaikum, \(userName)!")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.primary)
 
-            Text("How are you feeling today?")
-                .font(.body)
-                .padding()
-                .multilineTextAlignment(.center)
+                        Text("How are you feeling today?")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
 
-            TextField("Enter what is your feeling here", text: $userInput)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding(.horizontal)
+                    // Input Section
+                    Spacer()
+                    inputSection()
+                        .padding(.horizontal)
+
+                    // Loading Indicator
+                    if isLoading {
+                        ProgressView("Finding suitable verse...")
+                            .padding()
+                    }
+
+                    // Results Section
+                    if !predictedEmotion.isEmpty || !quranicVerse.isEmpty {
+                        VStack(spacing: 15) {
+                            if !predictedEmotion.isEmpty {
+                                VStack {
+                                    Text("Predicted Emotion")
+                                        .font(.headline)
+                                        .foregroundColor(.secondary)
+
+                                    Text(predictedEmotion)
+                                        .font(.title3)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.primary)
+                                }
+                            }
+
+                            if !quranicVerse.isEmpty {
+                                VStack {
+                                    Text("Quranic Verse")
+                                        .font(.headline)
+                                        .foregroundColor(.secondary)
+
+                                    ScrollView {
+                                        Text(quranicVerse)
+                                            .font(.body)
+                                            .multilineTextAlignment(.center)
+                                            .foregroundColor(.primary)
+                                    }
+                                    .frame(maxHeight: 100)
+
+                                    // Bookmark Button
+                                    HStack {
+                                        Spacer()
+                                        Button(action: {
+                                            bookmarkVerse()
+                                        }) {
+                                            Image(systemName: "bookmark")
+                                                .font(.title2)
+                                                .padding(5)
+                                                .background(Color.green)
+                                                .foregroundColor(.white)
+                                                .clipShape(Circle())
+                                                .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
+                        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                    }
+
+                    //Spacer()
+                }
+                .padding()
+                .navigationTitle("Quranic Jar")
+                .navigationBarTitleDisplayMode(.inline)
+            }
+            .tabItem {
+                Label("Home", systemImage: "house")
+            }
+
+            // Bookmarks Tab
+            BookmarkView(bookmarks: $bookmarks)
+                .tabItem {
+                    Label("Bookmarks", systemImage: "bookmark")
+                }
+
+            // Search Tab
+            NavigationView {
+                SearchView()
+            }
+            .tabItem {
+                Label("Search", systemImage: "magnifyingglass")
+            }
+
+            // Settings Tab
+            Text("Settings")
+                .font(.title)
+                .foregroundColor(.primary)
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
+                }
+        }
+    }
+
+
+    @ViewBuilder
+    private func inputSection() -> some View {
+        HStack {
+            TextField("I am feeling ...", text: $userInput)
+                .padding(.leading)
+                .frame(height: 40)
+                .frame(maxWidth: .infinity)
+                .background(Color(.systemGray6))
+                .cornerRadius(30)
+                .multilineTextAlignment(.leading)
 
             Button(action: {
                 predictEmotion()
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }) {
-                Text("Predict Emotion")
+                Image(systemName: "stethoscope")
+                    .font(.title2)
                     .padding()
-                    .background(Color.blue)
+                    .background(isLoading ? Color.gray : Color.blue)
                     .foregroundColor(.white)
-                    .cornerRadius(10)
+                    .clipShape(Circle())
             }
             .disabled(isLoading)
-
-            if isLoading {
-                ProgressView("Predicting...")
-            }
-
-            if !predictedEmotion.isEmpty {
-                Text("Predicted Emotion: \(predictedEmotion)")
-                    .font(.headline)
-                    .padding()
-            }
-
-            if !quranicVerse.isEmpty {
-                Text("Quranic Verse: \(quranicVerse)")
-                    .font(.subheadline)
-                    .multilineTextAlignment(.center)
-                    .padding()
-            }
+            .padding(.trailing, 5)
         }
-        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(30)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
 
     func predictEmotion() {
@@ -90,6 +195,37 @@ struct ContentView: View {
                 }
             }
         }.resume()
+    }
+
+    func bookmarkVerse() {
+        guard !quranicVerse.isEmpty else { return }
+        if !bookmarks.contains(quranicVerse) {
+            bookmarks.append(quranicVerse)
+        }
+    }
+}
+
+struct TypewriterText: View {
+    let text: String
+    @State private var displayedText: String = ""
+    @State private var charIndex: Int = 0
+
+    var body: some View {
+        Text(displayedText)
+            .onAppear {
+                displayedText = ""
+                charIndex = 0
+                typeText()
+            }
+    }
+
+    private func typeText() {
+        guard charIndex < text.count else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            displayedText.append(text[text.index(text.startIndex, offsetBy: charIndex)])
+            charIndex += 1
+            typeText()
+        }
     }
 }
 
