@@ -16,29 +16,33 @@ struct SearchView: View {
     @State private var allVerses: [QuranVerse] = []
 
     var body: some View {
-        NavigationView {
-            VStack {
-                SearchBar(text: $searchText, onSearch: performSearch)
-                List(results) { verse in
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("\(verse.surahName) (\(verse.surahNo):\(verse.ayahNo))")
-                            .font(.headline)
-                        Text(verse.ayahArabic)
-                            .font(.body)
-                            .foregroundColor(.primary)
-                        Text(verse.ayahEnglish)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .listStyle(PlainListStyle())
-            }
-            .navigationTitle("Search")
-            .onAppear {
-                allVerses = loadQuranVerses(from: "quran_emotions")
-            }
-        }
-    }
+          NavigationView {
+              VStack(spacing: 0){
+                  SearchBar(text: $searchText, onSearch: {
+                      performSearch()
+                      UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                  })
+                  List(results) { verse in
+                      VStack(alignment: .leading, spacing: 5) {
+                          Text("\(verse.surahName) (\(verse.surahNo):\(verse.ayahNo))")
+                              .font(.headline)
+                          Text(verse.ayahArabic)
+                              .font(.body)
+                              .foregroundColor(.primary)
+                          Text(verse.ayahEnglish)
+                              .font(.subheadline)
+                              .foregroundColor(.secondary)
+                      }
+                  }
+                  .listStyle(PlainListStyle())
+              }
+              .navigationTitle("Search")
+              .onAppear {
+                  allVerses = loadQuranVerses(from: "quran_emotions_cleaned")
+              }
+          }
+          Spacer()
+      }
 
     private func performSearch() {
         results = allVerses.filter { verse in
