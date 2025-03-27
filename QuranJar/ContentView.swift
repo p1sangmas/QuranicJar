@@ -170,7 +170,7 @@ struct ContentView: View {
         guard !userInput.isEmpty else { return }
 
         isLoading = true
-        let url = URL(string: "http://192.168.0.108:3000/predict")!
+        let url = URL(string: "http://ip-address:3000/predict")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
