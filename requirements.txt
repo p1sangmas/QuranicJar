@@ -1,6 +1,7 @@
 pandas
 transformers
 scikit-learn
-torch --index-url https://download.pytorch.org/whl/cu118
+torch
 matplotlib
 seaborn
+flask
