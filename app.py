@@ -23,7 +23,7 @@ def load_quran_dataset(file_path):
     df = pd.read_csv(file_path)
     return df
 
-quran_df = load_quran_dataset("./dataset/quran_emotions.csv")
+quran_df = load_quran_dataset("./dataset/quran_emotions_cleaned_2.csv")
 
 # Function to classify emotion using BERT
 def classify_emotion_bert(user_input):
@@ -76,7 +76,7 @@ def get_quranic_verse(predicted_emotion, df):
     if filtered_verses.empty:
         return "No verse found for the predicted emotion."
     selected_row = filtered_verses.sample(n=1).iloc[0]
-    verse_with_details = f"{selected_row['ayah_en']} (Surah {selected_row['surah_no']}, Verse {selected_row['ayah_no_surah']})"
+    verse_with_details = f"{selected_row['ayah_ar']}\n{selected_row['ayah_en']} (Surah {selected_row['surah_name_roman']}: {selected_row['surah_name_en']}, Verse {selected_row['ayah_no_surah']})"
     return verse_with_details
 
 # Define API endpoint
