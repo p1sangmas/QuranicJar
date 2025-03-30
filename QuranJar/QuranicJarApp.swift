@@ -10,6 +10,7 @@ import SwiftUI
 @main
 struct QuranicJarApp: App {
     @AppStorage("userName") private var userName: String = ""
+    @AppStorage("appearanceMode") private var appearanceMode: String = "system"
 
     var body: some Scene {
         WindowGroup {
@@ -17,7 +18,19 @@ struct QuranicJarApp: App {
                 WelcomeView()
             } else {
                 ContentView()
+                    .preferredColorScheme(colorSchemeForAppearanceMode()) // Apply global color scheme
             }
+        }
+    }
+
+    private func colorSchemeForAppearanceMode() -> ColorScheme? {
+        switch appearanceMode {
+        case "light":
+            return .light
+        case "dark":
+            return .dark
+        default:
+            return nil // Follow the system appearance
         }
     }
 }

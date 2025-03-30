@@ -6,171 +6,258 @@
 //
 
 import SwiftUI
+import Network
 
 struct ContentView: View {
     @AppStorage("userName") private var userName: String = ""
+    @AppStorage("bookmarks") private var bookmarksData: String = "[]" // Store bookmarks as a JSON string
     @State private var userInput: String = ""
     @State private var predictedEmotion: String = ""
     @State private var quranicVerse: String = ""
     @State private var isLoading: Bool = false
-    @State private var bookmarks: [String] = [] // List of bookmarked verses
+    @State private var bookmarks: [QuranVerse] = []
+    @StateObject private var networkMonitor = NetworkMonitor()
+    @State private var selectedTab: Int = 0
+    
+    // Computed property to calculate word count
+    private var wordCount: Int {
+        userInput.split { $0.isWhitespace }.count
+    }
+
+    // Computed property to check if the button should be enabled
+    private var isPredictButtonEnabled: Bool {
+        wordCount >= 3 && !isLoading && networkMonitor.status == "Connected"
+    }
 
     var body: some View {
-        TabView {
+        ZStack {
             // Main Content
-            NavigationView {
-                VStack(spacing: 20) {
-                    Spacer()
-                    // Greeting Section
-                    VStack(spacing: 10) {
-                        TypewriterText(text: "Assalamualaikum, \(userName)!")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                            .multilineTextAlignment(.center)
-                            .foregroundColor(.primary)
+            TabView(selection: $selectedTab) {
+                NavigationView {
+                    VStack(spacing: 20) {
+                        Spacer()
 
-                        Text("How are you feeling today?")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding()
+                        // Greeting Section
+                        VStack(spacing: 10) {
+                            TypewriterText(text: "Assalamualaikum, \(userName)!")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                                .multilineTextAlignment(.center)
+                                .foregroundColor(.primary)
 
-                    // Input Section
-                    Spacer()
-                    inputSection()
-                        .padding(.horizontal)
+                            Text("How are you feeling today?")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding()
 
-                    // Loading Indicator
-                    if isLoading {
-                        ProgressView("Finding suitable verse...")
-                            .padding()
-                    }
+                        // Input Section
+                        Spacer()
+                        inputSection()
+                            .padding(.horizontal)
 
-                    // Results Section
-                    if !predictedEmotion.isEmpty || !quranicVerse.isEmpty {
-                        VStack(spacing: 15) {
-                            if !predictedEmotion.isEmpty {
-                                VStack {
-                                    Text("Predicted Emotion")
-                                        .font(.headline)
-                                        .foregroundColor(.secondary)
+                        // Loading Indicator
+                        if isLoading {
+                            ProgressView("Finding suitable verse...")
+                                .padding()
+                        }
 
-                                    Text(predictedEmotion)
-                                        .font(.title3)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.primary)
-                                }
-                            }
+                        // Results Section
+                        if !predictedEmotion.isEmpty || !quranicVerse.isEmpty {
+                            VStack(spacing: 15) {
+                                if !predictedEmotion.isEmpty {
+                                    VStack {
+                                        Text("Predicted Emotion")
+                                            .font(.headline)
+                                            .foregroundColor(.secondary)
 
-                            if !quranicVerse.isEmpty {
-                                VStack {
-                                    Text("Quranic Verse")
-                                        .font(.headline)
-                                        .foregroundColor(.secondary)
-
-                                    ScrollView {
-                                        Text(quranicVerse)
-                                            .font(.body)
-                                            .multilineTextAlignment(.center)
+                                        Text(predictedEmotion)
+                                            .font(.title3)
+                                            .fontWeight(.semibold)
                                             .foregroundColor(.primary)
                                     }
-                                    .frame(maxHeight: 100)
+                                }
 
-                                    // Bookmark Button
-                                    HStack {
-                                        Spacer()
-                                        Button(action: {
-                                            bookmarkVerse()
-                                        }) {
-                                            Image(systemName: "bookmark")
-                                                .font(.title2)
-                                                .padding(5)
-                                                .background(Color.green)
-                                                .foregroundColor(.white)
-                                                .clipShape(Circle())
-                                                .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
+                                if !quranicVerse.isEmpty {
+                                    VStack {
+                                        Text("Quranic Verse")
+                                            .font(.headline)
+                                            .foregroundColor(.secondary)
+
+                                        ScrollView {
+                                            VStack(spacing: 10) {
+                                                // Display Arabic text
+                                                if let verse = parseQuranicVerse(quranicVerse, emotion: predictedEmotion) {
+                                                    Text(verse.ayahArabic)
+                                                        .font(.title)
+                                                        .multilineTextAlignment(.center)
+                                                        .foregroundColor(.primary)
+                                                }
+
+                                                // Display English translation
+                                                Text(quranicVerse)
+                                                    .font(.body)
+                                                    .multilineTextAlignment(.center)
+                                                    .foregroundColor(.primary)
+                                            }
+                                        }
+                                        .frame(maxHeight: 100)
+
+                                        // Bookmark Button
+                                        HStack {
+                                            Spacer()
+                                            Button(action: {
+                                                if let verse = parseQuranicVerse(quranicVerse, emotion: predictedEmotion) {
+                                                    bookmarkVerse(verse: verse)
+                                                    let generator = UINotificationFeedbackGenerator()
+                                                    generator.notificationOccurred(.success)
+                                                    print("Verse successfully bookmarked!")
+                                                } else {
+                                                    print("Failed to parse quranicVerse")
+                                                }
+                                            }) {
+                                                Image(systemName: "bookmark")
+                                                    .font(.title2)
+                                                    .padding(5)
+                                                    .foregroundColor(.green)
+                                            }
                                         }
                                     }
                                 }
                             }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(10)
+                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
                         }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
-                        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+
                     }
-
-                    //Spacer()
+                    .padding()
+                    .navigationTitle("Quranic Jar")
+                    .navigationBarTitleDisplayMode(.inline)
                 }
-                .padding()
-                .navigationTitle("Quranic Jar")
-                .navigationBarTitleDisplayMode(.inline)
-            }
-            .tabItem {
-                Label("Home", systemImage: "house")
-            }
-
-            // Bookmarks Tab
-            BookmarkView(bookmarks: $bookmarks)
                 .tabItem {
-                    Label("Bookmarks", systemImage: "bookmark")
+                    Label("Home", systemImage: "house")
                 }
+                .tag(0) // Tag for the "Home" tab
 
-            // Search Tab
-            NavigationView {
-                SearchView()
-            }
-            .tabItem {
-                Label("Search", systemImage: "magnifyingglass")
-            }
+                // Bookmarks Tab
+                BookmarkView(bookmarks: $bookmarks)
+                    .tabItem {
+                        Label("Bookmarks", systemImage: "bookmark")
+                    }
+                    .tag(1) // Tag for the "Bookmarks" tab
 
-            // Settings Tab
-            Text("Settings")
-                .font(.title)
-                .foregroundColor(.primary)
+                // Search Tab
+                NavigationView {
+                    SearchView(bookmarks: $bookmarks)
+                }
+                .tabItem {
+                    Label("Search", systemImage: "magnifyingglass")
+                }
+                .tag(2) // Tag for the "Search" tab
+
+                // Settings Tab
+                NavigationView {
+                    SettingsView(bookmarks: $bookmarks)
+                }
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }
+                .tag(3) // Tag for the "Settings" tab
+            }
+            .onAppear(perform: loadBookmarks)
+
+            // Fixed Network Status (Only for Home Tab)
+            if selectedTab == 0 {
+                VStack {
+                    HStack {
+                        Image(systemName: networkMonitor.status == "Connected" ? "network" : "network.slash")
+                            .foregroundColor(networkMonitor.status == "Connected" ? .green : .red)
+                            .scaleEffect(networkMonitor.status == "Connected" ? 1.2 : 1.0)
+                            .animation(.easeInOut(duration: 0.3), value: networkMonitor.status)
+
+                        Text(networkMonitor.status)
+                            .font(.footnote)
+                            .foregroundColor(networkMonitor.status == "Connected" ? .green : .red)
+                            .scaleEffect(networkMonitor.status == "Connected" ? 1.1 : 1.0)
+                            .animation(.easeInOut(duration: 0.3), value: networkMonitor.status)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(networkMonitor.status == "Connected" ? Color.green.opacity(0.2) : Color.red.opacity(0.2))
+                    .cornerRadius(20)
+                    .padding(.top, 50)
+                    .animation(.easeInOut(duration: 1), value: networkMonitor.status)
+
+                    Spacer()
+                }
+            }
+        }
+    }
+    
+    private func loadBookmarks() {
+        // Decode bookmarks from JSON string
+        if let data = bookmarksData.data(using: .utf8) {
+            let decoder = JSONDecoder()
+            if let decodedBookmarks = try? decoder.decode([QuranVerse].self, from: data) {
+                bookmarks = decodedBookmarks
+                print("Loaded bookmarks: \(bookmarks)")
+            } else {
+                print("Failed to decode bookmarks")
+            }
+        } else {
+            print("No bookmarks data found")
+        }
+    }
+
+    private func saveBookmarks() {
+        // Encode bookmarks to JSON string
+        let encoder = JSONEncoder()
+        if let encodedData = try? encoder.encode(bookmarks) {
+            bookmarksData = String(data: encodedData, encoding: .utf8) ?? "[]"
         }
     }
 
 
     @ViewBuilder
     private func inputSection() -> some View {
-        HStack {
-            TextField("I am feeling ...", text: $userInput)
-                .padding(.leading)
-                .frame(height: 40)
-                .frame(maxWidth: .infinity)
-                .background(Color(.systemGray6))
-                .cornerRadius(30)
-                .multilineTextAlignment(.leading)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                TextField("3-5 words on your feeling...", text: $userInput)
+                    .padding(.leading)
+                    .frame(height: 40)
+                    .frame(maxWidth: .infinity)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(30)
+                    .multilineTextAlignment(.leading)
 
-            Button(action: {
-                predictEmotion()
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }) {
-                Image(systemName: "stethoscope")
-                    .font(.title2)
-                    .padding()
-                    .background(isLoading ? Color.gray : Color.blue)
-                    .foregroundColor(.white)
-                    .clipShape(Circle())
+                Button(action: {
+                    predictEmotion()
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }) {
+                    Image(systemName: "stethoscope")
+                        .font(.title2)
+                        .padding()
+                        .background(isPredictButtonEnabled ? Color.blue : Color.gray)
+                        .foregroundColor(.white)
+                        .clipShape(Circle())
+                }
+                .disabled(!isPredictButtonEnabled) // Disable button if word count < 4
+                .padding(.trailing, 5)
             }
-            .disabled(isLoading)
-            .padding(.trailing, 5)
+            .background(Color(.systemGray6))
+            .cornerRadius(30)
+            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
         }
-        .background(Color(.systemGray6))
-        .cornerRadius(30)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
 
     func predictEmotion() {
         guard !userInput.isEmpty else { return }
 
         isLoading = true
-        let url = URL(string: "http://ip-address:3000/predict")!
+        let url = URL(string: "http://<backend-ip>:3000/predict")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -197,12 +284,54 @@ struct ContentView: View {
         }.resume()
     }
 
-    func bookmarkVerse() {
-        guard !quranicVerse.isEmpty else { return }
-        if !bookmarks.contains(quranicVerse) {
-            bookmarks.append(quranicVerse)
+    func bookmarkVerse(verse: QuranVerse) {
+        if !bookmarks.contains(where: { $0.id == verse.id }) {
+            bookmarks.append(verse)
+            saveBookmarks()
         }
     }
+    
+}
+
+func parseQuranicVerse(_ quranicVerse: String, emotion: String) -> QuranVerse? {
+    // Split the verse into the main text and the metadata (inside parentheses)
+    guard let metadataStart = quranicVerse.range(of: "("),
+          let metadataEnd = quranicVerse.range(of: ")") else {
+        return nil // Return nil if the format is invalid
+    }
+
+    let ayahEnglish = String(quranicVerse[..<metadataStart.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+    let metadata = String(quranicVerse[metadataStart.upperBound..<metadataEnd.lowerBound])
+
+    // Extract surah name, meaning, and verse number from the metadata
+    // Example metadata: "Surah Al-Qasas: The Stories, Verse 88"
+    let components = metadata.components(separatedBy: ",")
+    guard components.count == 2 else { return nil }
+
+    let surahPart = components[0].trimmingCharacters(in: .whitespacesAndNewlines) // "Surah Al-Qasas: The Stories"
+    let versePart = components[1].trimmingCharacters(in: .whitespacesAndNewlines) // "Verse 88"
+
+    // Extract surah name and meaning
+    let surahComponents = surahPart.components(separatedBy: ":")
+    guard surahComponents.count == 2 else { return nil }
+
+    let surahEnglish = surahComponents[0].replacingOccurrences(of: "Surah ", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+    let surahMeaning = surahComponents[1].trimmingCharacters(in: .whitespacesAndNewlines)
+
+    // Extract verse number
+    guard let ayahNo = Int(versePart.replacingOccurrences(of: "Verse ", with: "")) else { return nil }
+
+    // Return a QuranVerse object with the emotion included
+    return QuranVerse(
+        surahNo: 0,
+        ayahNo: ayahNo,
+        surahName: "",
+        ayahArabic: "",
+        emotion: emotion, // Include the emotion type
+        ayahEnglish: ayahEnglish,
+        surahMeaning: surahMeaning,
+        surahEnglish: surahEnglish
+    )
 }
 
 struct TypewriterText: View {
@@ -226,6 +355,26 @@ struct TypewriterText: View {
             charIndex += 1
             typeText()
         }
+    }
+}
+
+class NetworkMonitor: ObservableObject {
+    private let monitor = NWPathMonitor()
+    private let queue = DispatchQueue.global(qos: .background)
+
+    @Published var status: String = "Searching for network"
+
+    init() {
+        monitor.pathUpdateHandler = { path in
+            DispatchQueue.main.async {
+                if path.status == .satisfied {
+                    self.status = "Connected"
+                } else {
+                    self.status = "No internet connection"
+                }
+            }
+        }
+        monitor.start(queue: queue)
     }
 }
 
