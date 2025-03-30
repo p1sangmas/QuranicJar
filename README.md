@@ -2,6 +2,8 @@
 
 QuranicJar is a SwiftUI-based iOS application that predicts a user's emotion based on their input and provides a relevant Quranic verse for guidance and comfort. The app uses a Flask-based backend API powered by fine-tuned Natural Language Processing (NLP) BERT and RoBERTa models for emotion classification.
 
+![image](./showcase/3.png)
+
 ## Table of Contents
 - [Features](#features)
 - [File Description](#file-descriptions)
@@ -20,6 +22,8 @@ QuranicJar is a SwiftUI-based iOS application that predicts a user's emotion bas
 - **Quranic Verse Recommendation**: Based on the predicted emotion, the app provides a relevant Quranic verse for guidance.
 - **Ensemble Model**: Combines predictions from BERT and RoBERTa (NLP) models for improved accuracy.
 - **Loading Indicator**: Displays a progress view while the emotion prediction is being processed.
+
+![image2](./showcase/4.png)
 
 ### File Descriptions
 
