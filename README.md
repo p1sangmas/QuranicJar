@@ -17,13 +17,16 @@ QuranicJar is a SwiftUI-based iOS application that predicts a user's emotion bas
 
 ## Features
 
+![image2](./showcase/4.png)
+
 - **Emotion Prediction**: Users can input their feelings, and the app predicts their emotion using a backend API.
 - **Supported Emotions**: As for now, there are 4 supported emotions which are **anger**, **fear**, **joy** and **sadness**.
 - **Quranic Verse Recommendation**: Based on the predicted emotion, the app provides a relevant Quranic verse for guidance.
+- **Bookmark Verse**: Bookmark and filter your saved verses based on emotions.
+- **Search Verse**: Search verses according to emotion types, Surah's name or translation keywords.
 - **Ensemble Model**: Combines predictions from BERT and RoBERTa (NLP) models for improved accuracy.
 - **Loading Indicator**: Displays a progress view while the emotion prediction is being processed.
-
-![image2](./showcase/4.png)
+  
 
 ### File Descriptions
 
